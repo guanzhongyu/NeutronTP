@@ -8,9 +8,9 @@ def main():
     cached = True
     # r = coo_graph.COO_Graph_Full('cora')
 
-    # r = coo_graph.COO_Graph('cora')
+    r = coo_graph.COO_Graph('cora')
     # r = coo_graph.COO_Graph('LiveJournal')
-    r = coo_graph.COO_Graph('ComOrkut')
+    # r = coo_graph.COO_Graph('ComOrkut')
 
     # r = coo_graph.COO_Graph('reddit')
     # r = coo_graph.COO_Graph('test', full_graph_cache_enabled=cached)

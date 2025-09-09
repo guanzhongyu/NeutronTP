@@ -75,8 +75,8 @@ if __name__ == "__main__":
     # parser.add_argument("--dataset", type=str, default='reddit')
 
     # parser.add_argument("--dataset", type=str, default='LiveJournal')
-    parser.add_argument("--dataset", type=str, default='ComOrkut')
-    # parser.add_argument("--dataset", type=str, default='cora')
+    # parser.add_argument("--dataset", type=str, default='ComOrkut')
+    parser.add_argument("--dataset", type=str, default='cora')
 
     # parser.add_argument("--model", type=str, default='DecoupleGCN')
 

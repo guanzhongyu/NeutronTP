@@ -34,11 +34,13 @@ class DistEnv:
         return '<DistEnv %d/%d %s>'%(self.rank, self.world_size, self.backend)
 
     def init_device(self):
-        # 初始化设备，如果有多个 GPU，将设备设置为当前进程的 GPU 设备，否则为 CPU
-        if torch.cuda.device_count()>1:
-            self.device = torch.device('cuda', self.rank)
+        # 初始化设备，如果有 GPU，将设备设置为当前进程的 GPU 设备，否则为 CPU
+        if self.backend == 'nccl' and torch.cuda.is_available() and torch.cuda.device_count() > 0:
+            # GPU 模式
+            self.device = torch.device('cuda', self.rank % torch.cuda.device_count())
             torch.cuda.set_device(self.device)
         else:
+            # CPU 模式
             self.device = torch.device('cpu')
         # self.device = torch.device('cpu')
         # self.device = torch.device('cuda', 0)

@@ -30,6 +30,12 @@ pip install ogb
 ```
 // Cuda 11:
 conda install pytorch torchvision torchaudio cudatoolkit=11.1 -c pytorch-lts -c nvidia
+
+"""
+        为了适配各种函数，使用了以下版本的包
+        conda install pytorch==1.12.1 torchvision==0.13.1 torchaudio==0.12.1 cudatoolkit=11.6 -c pytorch
+"""
+
 conda install -c dglteam dgl-cuda11.1
 conda install pyg -c pyg -c conda-forge
 pip install ogb

@@ -9,13 +9,34 @@ import torch.distributed as dist
 
 # 定义一个函数，用于包装分布式训练的设置和启动
 def process_wrapper(rank, args, func):
-    # for single machine
-    os.environ['MASTER_ADDR'] = '127.0.0.1'  #设置分布式训练的主节点，127.0.0.1默认是本地节点
-    os.environ['MASTER_PORT'] = '29501'    #端口号
-    os.environ['NCCL_SOCKET_IFNAME'] = 'lo' #NCCL网络接口名称，'lo'通常表示本地回环接口，GPU通信将通过本地主机进行
+
+    if args.nnodes == 1:  
+        # 单机模式
+        os.environ['MASTER_ADDR'] = '127.0.0.1'  #设置分布式训练的主节点，127.0.0.1默认是本地节点
+        os.environ['MASTER_PORT'] = '29501'    #端口号
+        if args.backend == 'nccl':
+            # NCCL 专门用于 GPU 通信
+            os.environ['NCCL_SOCKET_IFNAME'] = 'lo' #NCCL网络接口名称，'lo'通常表示本地回环接口，GPU通信将通过本地主机进行
+    else:
+        # 多机模式
+        os.environ['MASTER_ADDR'] = '192.168.1.100'   # 主节点IP
+        os.environ['MASTER_PORT'] = '29500'           # 通信端口
+        os.environ['NCCL_SOCKET_IFNAME'] = 'eth0'     # 网卡名
+        # rank 需要考虑 node_rank
+        rank = args.node_rank * args.nprocs + rank
+        
+    # 创建分布式环境
     env = dist_utils.DistEnv(rank, args.nprocs, args.backend)
-    env.half_enabled = True
-    env.csr_enabled = True
+
+    if args.backend == 'nccl':
+        # GPU 模式
+        env.half_enabled = True
+        env.csr_enabled = True
+    else:
+        # CPU 模式
+        env.half_enabled = False
+        env.csr_enabled = False
+
     # for multi machine
     # os.environ['MASTER_ADDR'] = '202.199.6.34'  #设置分布式训练的主节点，127.0.0.1默认是本地节点
     # os.environ['MASTER_PORT'] = '29500'    #端口号
@@ -36,27 +57,37 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser() 
     # parser.add_argument("--nprocs", type=int, default=num_GPUs if num_GPUs>1 else 8)
     #single GPU
-    parser.add_argument("--nprocs", type=int, default=2)
+    parser.add_argument("--nprocs", type=int, default=1)
+
     parser.add_argument("--chunk", type=int, default=32)
+
     parser.add_argument("--nnodes", type=int, default=1)
+
     parser.add_argument("--nlayers", type=int, default=2)
     parser.add_argument("--hidden", type=int, default=128)
     parser.add_argument("--epoch", type=int, default=20)
+
     # parser.add_argument("--backend", type=str, default='gloo')
-    parser.add_argument("--backend", type=str, default='nccl' if num_GPUs>1 else 'gloo') 
+    parser.add_argument("--backend", type=str, default='nccl')
+    # parser.add_argument("--backend", type=str, default='nccl' if num_GPUs>1 else 'gloo') 
     # parser.add_argument("--dataset", type=str, default='ogbn-100m')
     # parser.add_argument("--dataset", type=str, default='friendster')
     # parser.add_argument("--dataset", type=str, default='reddit')
-    parser.add_argument("--dataset", type=str, default='cora')
+
+    # parser.add_argument("--dataset", type=str, default='LiveJournal')
+    parser.add_argument("--dataset", type=str, default='ComOrkut')
+    # parser.add_argument("--dataset", type=str, default='cora')
+
     # parser.add_argument("--model", type=str, default='DecoupleGCN')
-    # parser.add_argument("--model", type=str, default='GCN')
+
+    parser.add_argument("--model", type=str, default='GCN')
     # parser.add_argument("--model", type=str, default='TensplitGCN')
     # parser.add_argument("--model", type=str, default='TensplitGCNLARGE')
     # parser.add_argument("--model", type=str, default='TensplitGCNSWAP')
     # parser.add_argument("--model", type=str, default='TensplitGCNCPU')
     # parser.add_argument("--model", type=str, default='TensplitGATLARGE')
     # parser.add_argument("--model", type=str, default='GAT')
-    parser.add_argument("--model", type=str, default='TensplitGAT')
+    # parser.add_argument("--model", type=str, default='TensplitGAT')
     args = parser.parse_args()
     process_args = (args, dist_train.main)
     # 启动多个进程进行分布式训练

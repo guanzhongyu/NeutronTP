@@ -32,6 +32,7 @@ def f1(y_true, y_pred, multilabel=True):
            f1_score(y_true, y_pred, average="macro")
 
 def train(g, env, args):
+
     if args.model == 'GCN':
         model = GCN(g, env, hidden_dim=args.hidden, nlayers=args.nlayers)
     elif args.model == 'CachedGCN':
@@ -78,6 +79,7 @@ def train(g, env, args):
             optimizer.step()
             # 输出当前的损失信息
             env.logger.log("Epoch {:05d} | Loss {:.4f}".format(epoch, loss.item()), rank=0)
+            
 
         if epoch%10==0 or epoch==args.epoch-1:
             # 收集所有节点的输出，并拼接在一起
@@ -116,6 +118,7 @@ def main(env, args):
             g = Parted_COO_Graph(args.dataset, env.rank, env.world_size, env.device, env.half_enabled, env.csr_enabled) #保存feature与graph在CPU内存中
         else:
             g = Parted_COO_Graph(args.dataset, env.rank, env.world_size, env.device, env.half_enabled, env.csr_enabled)
+        
         env.logger.log('graph loaded', g)
         env.logger.log('graph loaded\n', torch.cuda.memory_summary())
         # 调用 train 函数进行图神经网络训练

@@ -22,19 +22,44 @@ except ImportError as e:
 # 自定义广播函数，将 local_feature 广播给所有进程
 def broadcast(local_adj_parts, local_feature, tag):
     env = DistEnv.env
-    z_loc = torch.zeros_like(local_feature)
-    feature_bcast = torch.zeros_like(local_feature)
+    device = env.device  # 自动获取设备
+
+    # 在对应设备上初始化张量
+    z_loc = torch.zeros_like(local_feature, device=device)
+    feature_bcast = torch.zeros_like(local_feature, device=device)
+
+    """
+    print(f"[DEBUG {tag}] init: device={feature_bcast.device}, "
+          f"sparse={feature_bcast.is_sparse}, "
+          f"shape={feature_bcast.shape}, dtype={feature_bcast.dtype}",
+          flush=True)
+    """
+
     for src in range(env.world_size):
         if src==env.rank:
-            feature_bcast = local_feature.clone()
+            feature_bcast = local_feature.clone().to(device)
+
+        """
+        print(f"[DEBUG {tag}] before broadcast src={src}, "
+              f"rank={env.rank}, "
+              f"device={feature_bcast.device}, "
+              f"sparse={feature_bcast.is_sparse}, "
+              f"shape={feature_bcast.shape}",
+              flush=True)
+        """
+
         # 等待所有进程都准备好再进行广播
         # env.barrier_all()
         with env.timer.timing_cuda('broadcast'):
             # 使用 PyTorch 分布式通信库进行广播
             dist.broadcast(feature_bcast, src=src)
         with env.timer.timing_cuda('spmm'):
-            # 调用自定义的稀疏矩阵相乘函数
-            spmm(local_adj_parts[src], feature_bcast, z_loc)
+            # 根据设备选择 spmm
+            if DistEnv.env.device.type == 'cuda':
+                # 调用自定义的稀疏矩阵相乘函数
+                spmm(local_adj_parts[src], feature_bcast, z_loc)  # 调用 CUDA kernel
+            else:
+                z_loc.addmm_(local_adj_parts[src], feature_bcast)  # CPU fallback
     return z_loc
 
 

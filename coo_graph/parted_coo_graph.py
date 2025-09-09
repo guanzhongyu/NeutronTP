@@ -63,9 +63,26 @@ class COO_Graph(BasicGraph):
         # 构造函数，初始化 COO 图
         self.preprocess_for = preprocess_for
         self.cache_path = GraphCache.full_graph_path(name, preprocess_for)
+
+        # 如果开启缓存并且缓存文件存在
         if full_graph_cache_enabled and os.path.exists(self.cache_path):
             cached_attr_dict = GraphCache.load_dict(self.cache_path)
-        else:
+
+            """
+            # 打印缓存包含的字段和标签信息
+            print(f"Loaded cached graph from {self.cache_path}")
+            print("Graph contains keys:", list(cached_attr_dict.keys()))
+
+            if 'labels' in cached_attr_dict:
+                labels = cached_attr_dict['labels']
+                print(f"Labels tensor shape: {labels.shape}, dtype: {labels.dtype}")
+                if labels.dim() == 1:
+                    print("Unique labels:", torch.unique(labels))
+                elif labels.dim() == 2:
+                    print("Unique labels:", torch.unique(labels.view(-1)))
+            """
+
+        else:   # 否则，加载数据集并预处理
             src_data = datasets.load_dataset(name)
             cached_attr_dict = graph_utils.preprocess(name, src_data, preprocess_for)  # norm feat, remove edge_index, add adj
             GraphCache.save_dict(cached_attr_dict, self.cache_path)

@@ -115,3 +115,9 @@ if __name__ == "__main__":
     process_args = (args, dist_train.main)
     # 启动多个进程进行分布式训练
     torch.multiprocessing.spawn(process_wrapper, process_args, args.nprocs)
+
+    """
+        每次运行前首先保证nccl通信一致，然后设置网卡名
+        export NCCL_IB_DISABLE=1
+        export NCCL_SOCKET_IFNAME=ens17f0
+    """

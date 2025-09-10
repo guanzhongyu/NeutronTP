@@ -92,11 +92,11 @@ def process_edge_list_maxnode(file_path, save_path, num_features=128, num_classe
 
 if __name__ == "__main__":
     # 边表文件
-    #file_path = 'graph_data/LJ_srt_wei_cn_train.txt'
-    file_path = 'graph_data/com_srt_weg_cn_train.txt'
+    file_path = 'graph_data/LJ_srt_wei_cn_train.txt'
+    # file_path = 'graph_data/com_srt_weg_cn_train.txt'
 
-    # save_path = 'data/LiveJournal.torch'  # 保存路径
-    save_path = 'data/ComOrkut.torch'  # 保存路径
+    save_path = 'data/LiveJournal.torch'  # 保存路径
+    # save_path = 'data/ComOrkut.torch'  # 保存路径
 
     # 运行生成函数
     process_edge_list_maxnode(file_path, save_path,

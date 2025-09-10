@@ -12,21 +12,23 @@ def process_wrapper(rank, args, func):
 
     if args.nnodes == 1:  
         # 单机模式
-        os.environ['MASTER_ADDR'] = '127.0.0.1'  #设置分布式训练的主节点，127.0.0.1默认是本地节点
-        os.environ['MASTER_PORT'] = '29501'    #端口号
+        os.environ['MASTER_ADDR'] = args.master_addr    #设置分布式训练的主节点，127.0.0.1默认是本地节点
+        os.environ['MASTER_PORT'] = args.master_port    #端口号
         if args.backend == 'nccl':
             # NCCL 专门用于 GPU 通信
             os.environ['NCCL_SOCKET_IFNAME'] = 'lo' #NCCL网络接口名称，'lo'通常表示本地回环接口，GPU通信将通过本地主机进行
     else:
         # 多机模式
-        os.environ['MASTER_ADDR'] = '192.168.1.100'   # 主节点IP
-        os.environ['MASTER_PORT'] = '29500'           # 通信端口
-        os.environ['NCCL_SOCKET_IFNAME'] = 'eth0'     # 网卡名
+        # 这里要确保所有节点的 MASTER_ADDR/MASTER_PORT 一致
+        os.environ['MASTER_ADDR'] = args.master_addr
+        os.environ['MASTER_PORT'] = args.master_port
+        os.environ['NCCL_SOCKET_IFNAME'] = args.ifname     # 网卡名
         # rank 需要考虑 node_rank
         rank = args.node_rank * args.nprocs + rank
         
     # 创建分布式环境
-    env = dist_utils.DistEnv(rank, args.nprocs, args.backend)
+    world_size = args.nnodes * args.nprocs
+    env = dist_utils.DistEnv(rank, world_size, args.backend)
 
     if args.backend == 'nccl':
         # GPU 模式
@@ -57,11 +59,13 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser() 
     # parser.add_argument("--nprocs", type=int, default=num_GPUs if num_GPUs>1 else 8)
     #single GPU
+    # 每个节点（node）上启动的进程数（通常 = GPU 数）
     parser.add_argument("--nprocs", type=int, default=1)
 
     parser.add_argument("--chunk", type=int, default=32)
 
-    parser.add_argument("--nnodes", type=int, default=1)
+    # 节点数（几台机器一起训练）
+    parser.add_argument("--nnodes", type=int, default=2)
 
     parser.add_argument("--nlayers", type=int, default=2)
     parser.add_argument("--hidden", type=int, default=128)
@@ -88,6 +92,16 @@ if __name__ == "__main__":
     # parser.add_argument("--model", type=str, default='TensplitGATLARGE')
     # parser.add_argument("--model", type=str, default='GAT')
     # parser.add_argument("--model", type=str, default='TensplitGAT')
+
+    # 当前节点编号，从0开始，主节点是0，区分第几台服务器（节点）
+    parser.add_argument("--node_rank", type=int, default=0)
+    # 主节点的IP地址
+    parser.add_argument("--master_addr", type=str, default="192.168.6.129")
+    # 主节点通信端口
+    parser.add_argument("--master_port", type=str, default="29500")
+    # 用于 NCCL 通信的网卡名，例如 eth0/eno1
+    parser.add_argument("--ifname", type=str, default="ens17f0")
+
     args = parser.parse_args()
     process_args = (args, dist_train.main)
     # 启动多个进程进行分布式训练

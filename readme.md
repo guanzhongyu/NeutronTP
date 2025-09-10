@@ -51,7 +51,10 @@ python setup.py install
 python prepare_data.py
 """
         conda install "pytorch>=1.9" torchvision torchaudio cudatoolkit=11.1 -c pytorch -c nvidia
-        遇到pytorch版本问题，执行以上指令
+        遇到pytorch版本问题，执行以上指令：存在pytorch版本过高，警告函数落后的风险
+        conda remove pytorch torchvision torchaudio -y
+        // 可以执行下面的指令
+        conda install pytorch==1.13.1 torchvision==0.14.1 torchaudio==0.13.1 cudatoolkit=11.1 -c pytorch -c nvidia
 """
 ```
 5. Train.

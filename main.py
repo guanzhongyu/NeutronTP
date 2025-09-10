@@ -21,8 +21,8 @@ def process_wrapper(rank, args, func):
 
     if args.nnodes == 1:  
         # 单机模式
-        os.environ['MASTER_ADDR'] = args.master_addr    #设置分布式训练的主节点，127.0.0.1默认是本地节点
-        os.environ['MASTER_PORT'] = args.master_port    #端口号
+        os.environ['MASTER_ADDR'] = "127.0.0.1"    #设置分布式训练的主节点，127.0.0.1默认是本地节点
+        os.environ['MASTER_PORT'] = "29500"    #端口号
         if args.backend == 'nccl':
             # NCCL 专门用于 GPU 通信
             os.environ['NCCL_SOCKET_IFNAME'] = 'lo' #NCCL网络接口名称，'lo'通常表示本地回环接口，GPU通信将通过本地主机进行
@@ -108,7 +108,7 @@ if __name__ == "__main__":
     parser.add_argument("--master_addr", type=str, default="192.168.6.129")
     # 主节点通信端口
     parser.add_argument("--master_port", type=str, default="29500")
-    # 用于 NCCL 通信的网卡名，例如 eth0/eno1
+    # 用于 NCCL 通信的网卡名，例如 eth0/eno1，设置成每个机器可用的网卡
     parser.add_argument("--ifname", type=str, default="ens17f0")
 
     args = parser.parse_args()

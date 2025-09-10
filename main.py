@@ -6,6 +6,15 @@ import dist_utils
 import dist_train
 import torch.distributed as dist
 
+import warnings
+
+# 屏蔽所有 FutureWarning（包括 torch 的 AMP 警告）
+warnings.filterwarnings("ignore", category=FutureWarning)
+
+# 屏蔽 UserWarning（比如稀疏张量 beta 警告）
+warnings.filterwarnings("ignore", category=UserWarning)
+
+
 
 # 定义一个函数，用于包装分布式训练的设置和启动
 def process_wrapper(rank, args, func):

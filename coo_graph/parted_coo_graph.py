@@ -59,7 +59,7 @@ def is_undirected(edge_idx):
 
 
 class COO_Graph(BasicGraph):
-    def __init__(self, name, full_graph_cache_enabled=True, device='cuda', preprocess_for='GCN'):
+    def __init__(self, name, full_graph_cache_enabled=True, device='cpu', preprocess_for='GCN'):
         # 构造函数，初始化 COO 图
         self.preprocess_for = preprocess_for
         self.cache_path = GraphCache.full_graph_path(name, preprocess_for)

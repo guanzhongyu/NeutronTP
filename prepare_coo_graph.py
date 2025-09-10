@@ -4,7 +4,7 @@ import torch
 import numpy as np
 import os
 
-def process_edge_list_maxnode(file_path, save_path, num_features=128, num_classes=7, device='cuda'):
+def process_edge_list_maxnode(file_path, save_path, num_features=128, num_classes=7, device='cpu'):
     """
     将边表文件转换为 COO_Graph 格式（节点编号从0开始，最大编号+1作为节点数）
 
@@ -15,10 +15,6 @@ def process_edge_list_maxnode(file_path, save_path, num_features=128, num_classe
         num_classes: 节点分类类别数
         device: 'cpu' 或 'cuda'
     """
-    
-    # 自动选择设备
-    if device == 'cuda' and not torch.cuda.is_available():
-        device = 'cpu'
 
     # 读取边表并处理异常行
     edges = []
@@ -76,6 +72,7 @@ def process_edge_list_maxnode(file_path, save_path, num_features=128, num_classe
     # 构建字典
     attr_dict = {
         'adj': adj,
+        'edge_index': indices,
         'features': features,
         'labels': labels,
         'train_mask': train_mask,
@@ -92,14 +89,14 @@ def process_edge_list_maxnode(file_path, save_path, num_features=128, num_classe
 
 if __name__ == "__main__":
     # 边表文件
-    file_path = 'graph_data/LJ_srt_wei_cn_train.txt'
-    # file_path = 'graph_data/com_srt_weg_cn_train.txt'
+    # file_path = 'graph_data/LJ_srt_wei_cn_train.txt'
+    file_path = 'graph_data/com_srt_weg_cn_train.txt'
 
-    save_path = 'data/LiveJournal.torch'  # 保存路径
-    # save_path = 'data/ComOrkut.torch'  # 保存路径
+    # save_path = 'data/LiveJournal.torch'  # 保存路径
+    save_path = 'data/ComOrkut.torch'  # 保存路径
 
     # 运行生成函数
     process_edge_list_maxnode(file_path, save_path,
                               num_features=128,
                               num_classes=7,
-                              device='cuda')
+                              device='cpu')

@@ -33,6 +33,8 @@ def f1(y_true, y_pred, multilabel=True):
 
 def train(g, env, args):
 
+    # print(f"[RANK {env.rank}] enter train loop", flush=True)
+
     if args.model == 'GCN':
         model = GCN(g, env, hidden_dim=args.hidden, nlayers=args.nlayers)
     elif args.model == 'CachedGCN':
@@ -61,6 +63,7 @@ def train(g, env, args):
         loss_func = nn.BCEWithLogitsLoss(reduction='mean')
     # print("loss_func")
     for epoch in range(args.epoch):
+        # print(f"[RANK {env.rank}] starting epoch {epoch}", flush=True)
         with env.timer.timing('epoch'):
             with autocast(env.half_enabled):
                 # 前向传播，计算输出
@@ -77,8 +80,8 @@ def train(g, env, args):
             # 反向传播和参数更新
             loss.backward()
             optimizer.step()
-            # 输出当前的损失信息
-            env.logger.log("Epoch {:05d} | Loss {:.4f}".format(epoch, loss.item()), rank=0)
+            # 输出当前节点的损失信息
+            env.logger.log(f"[RANK {env.rank}] Epoch {epoch:05d} | Loss {loss.item():.4f}", rank=env.rank)
             
 
         if epoch%10==0 or epoch==args.epoch-1:
@@ -123,9 +126,18 @@ def main(env, args):
         env.logger.log('graph loaded\n', torch.cuda.memory_summary())
         # 调用 train 函数进行图神经网络训练
         train(g, env, args)
-    # 打印model信息
-    if env.rank == 0:    
-        print(f"Model: {args.model} layers: {args.nlayers} nprocs {args.nprocs}")
-    # 打印计时器的总结信息
-    env.logger.log(env.timer.summary_all(), rank=0)
+
+    
+    # 每个 rank 打印自己的模型信息
+    print(f"[RANK {env.rank}] Model: {args.model}, layers: {args.nlayers}, nprocs: {args.nprocs}", flush=True)
+
+    # 训练完成后，加入同步
+    if env.world_size > 1:
+        # 所有 rank 等待训练完成
+        torch.distributed.barrier()
+
+    # rank 0 输出同步后的计时器总时间
+    if env.rank == 0:
+        env.logger.log("===== Total Timing Summary =====", rank=0)
+        env.logger.log(env.timer.summary_all(), rank=0)
     # env.logger.log(env.timer.detail_all(), rank=0)

@@ -40,8 +40,6 @@ time_values = [
     [LJ_1_time, LJ_2_time]
 ]
 
-# 中文字体支持可去掉
-# plt.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei']
 plt.rcParams['axes.unicode_minus'] = False
 
 x = np.arange(len(datasets))
@@ -49,25 +47,35 @@ width = 0.35
 
 # ---------- GPU Memory Usage ----------
 fig1, ax1 = plt.subplots(figsize=(6,4))
-ax1.bar(x - width/2, [row[0] for row in gpu_values], width, label='1 Node')
-ax1.bar(x + width/2, [row[1] for row in gpu_values], width, label='2 Nodes')
+bars1 = ax1.bar(x - width/2, [row[0] for row in gpu_values], width, label='1 Node')
+bars2 = ax1.bar(x + width/2, [row[1] for row in gpu_values], width, label='2 Nodes')
 ax1.set_ylabel('Average GPU Memory (MB)')
 ax1.set_title('GPU Memory Usage for Different Datasets')
 ax1.set_xticks(x)
 ax1.set_xticklabels(datasets)
 ax1.legend()
+
+# 标注数值
+ax1.bar_label(bars1, fmt='%.1f')
+ax1.bar_label(bars2, fmt='%.1f')
+
 plt.tight_layout()
 plt.savefig(gpu_fig_name, dpi=300)
 
 # ---------- Runtime ----------
 fig2, ax2 = plt.subplots(figsize=(6,4))
-ax2.bar(x - width/2, [row[0] for row in time_values], width, label='1 Node')
-ax2.bar(x + width/2, [row[1] for row in time_values], width, label='2 Nodes')
+bars3 = ax2.bar(x - width/2, [row[0] for row in time_values], width, label='1 Node')
+bars4 = ax2.bar(x + width/2, [row[1] for row in time_values], width, label='2 Nodes')
 ax2.set_ylabel('Total Runtime (s)')
 ax2.set_title('Runtime for Different Datasets')
 ax2.set_xticks(x)
 ax2.set_xticklabels(datasets)
 ax2.legend()
+
+# 标注数值
+ax2.bar_label(bars3, fmt='%.2f')
+ax2.bar_label(bars4, fmt='%.2f')
+
 plt.tight_layout()
 plt.savefig(time_fig_name, dpi=300)
 

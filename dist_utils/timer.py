@@ -39,12 +39,34 @@ class DistTimer:
         return s
 
     def sync_duration_dicts(self):
+        print(f"[{self.env.rank}] Before writing duration_dict")  # 调试
         self.env.store.set('duration_dict_%d'%self.env.rank, pickle.dumps(self.duration_dict))
+        print(f"[{self.env.rank}] Finished writing duration_dict, entering barrier")  # 调试
+        
         self.env.barrier_all()
-        self.all_durations = [pickle.loads(self.env.store.get('duration_dict_%d'%rank)) for rank in range(self.env.world_size)]
+        print(f"[{self.env.rank}] Passed barrier")  # 调试
+
+        if self.env.rank == 0:
+            """# 先单独尝试读取Rank 1的数据（关键调试步骤）
+            
+            rank1_data = pickle.loads(self.env.store.get('duration_dict_1'))
+            print(f"[Rank 0] DEBUG: Successfully read Rank 1 data! Keys: {rank1_data.keys()}")  # 明确输出读取成功"""
+
+            self.all_durations = [pickle.loads(self.env.store.get('duration_dict_%d'%rank)) for rank in range(self.env.world_size)]
+            print(f"[{self.env.rank}] Finished reading all duration_dicts")  # 调试
 
     def summary_all(self):
+        print(f"[{self.env.rank}] Calling sync_duration_dicts()")
         self.sync_duration_dicts()
+        print(f"[{self.env.rank}] Returned from sync_duration_dicts()")
+        
+        if self.env.rank != 0:
+            print(f"[{self.env.rank}] Not rank 0, returning None")
+            return None
+
+        print(f"[{self.env.rank}] Computing summary")
+
+        # rank 0 计算平均值和标准差
         avg_dict = {}
         std_dict = {}
         for key in self.duration_dict:

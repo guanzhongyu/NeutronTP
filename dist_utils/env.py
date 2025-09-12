@@ -8,7 +8,7 @@ from .logger import DistLogger
 
 
 class DistEnv:
-    def __init__(self, rank, world_size, backend='nccl'):
+    def __init__(self, rank, world_size, backend, master_addr="127.0.0.1", master_port=29500):
         """
         分布式环境的初始化类
 
@@ -21,14 +21,24 @@ class DistEnv:
         assert(world_size>0)
         self.rank, self.world_size = rank, world_size
         self.backend = backend
+        self.master_addr = master_addr
+        self.master_port = master_port
+
         self.init_device()
+
+        # Filestore 适用于单机多卡环境 或者 搭建NFS共享存储的多机环境
+        self.store = dist.FileStore(os.path.join(tempfile.gettempdir(), 'torch-dist'), self.world_size)
+
+        # TCPStore 适用于多机环境
+        
         self.init_dist_groups()
         self.logger = DistLogger(self)
         self.timer = DistTimer(self)
-        self.store = dist.FileStore(os.path.join(tempfile.gettempdir(), 'torch-dist'), self.world_size)
+
         # for multi machine
-        # self.store = dist.TCPStore(os.environ['MASTER_ADDR'], 29501, self.world_size , is_master=True)
+        # 
         DistEnv.env = self  # no global...
+
 
     def __repr__(self):
         return '<DistEnv %d/%d %s>'%(self.rank, self.world_size, self.backend)

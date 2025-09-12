@@ -12,6 +12,11 @@ import numpy as np
 from sklearn.metrics import f1_score
 from dist_utils import DistEnv
 
+from gpu_monitor import GPUMemoryMonitorLocal
+
+import pickle
+import os
+
 
 def f1(y_true, y_pred, multilabel=True):
     y_true = y_true.cpu().numpy()
@@ -31,7 +36,7 @@ def f1(y_true, y_pred, multilabel=True):
     return f1_score(y_true, y_pred, average="micro"), \
            f1_score(y_true, y_pred, average="macro")
 
-def train(g, env, args):
+def train(g, env, args, gpu_monitor):
 
     # print(f"[RANK {env.rank}] enter train loop", flush=True)
 
@@ -64,6 +69,7 @@ def train(g, env, args):
     # print("loss_func")
     for epoch in range(args.epoch):
         # print(f"[RANK {env.rank}] starting epoch {epoch}", flush=True)
+
         with env.timer.timing('epoch'):
             with autocast(env.half_enabled):
                 # 前向传播，计算输出
@@ -83,6 +89,8 @@ def train(g, env, args):
             # 输出当前节点的损失信息
             env.logger.log(f"[RANK {env.rank}] Epoch {epoch:05d} | Loss {loss.item():.4f}", rank=env.rank)
             
+        # 监控 GPU 内存使用情况，每隔一段时间监视一次
+        gpu_monitor.record_epoch_memory()
 
         if epoch%10==0 or epoch==args.epoch-1:
             # 收集所有节点的输出，并拼接在一起
@@ -103,10 +111,15 @@ def main(env, args):
 
     env.half_enabled = True
     env.half_enabled = False
+
     # 打印进程开始信息
     env.logger.log('proc begin:', env)
     with env.timer.timing('total'):
         # 使用 Parted_COO_Graph 加载分布式环境下的图数据
+
+        # Initialize GPU memory monitor
+        gpu_monitor = GPUMemoryMonitorLocal(rank=env.rank)
+
         if args.model == 'TensplitGCN':
             print(f"Rank: {env.rank}, world_size: {env.world_size}")
             g = Full_COO_Graph(args.dataset, env.rank, env.world_size, env.device, env.half_enabled, env.csr_enabled) #不再切分图邻接矩阵, 但feature按worker数均分
@@ -125,19 +138,37 @@ def main(env, args):
         env.logger.log('graph loaded', g)
         env.logger.log('graph loaded\n', torch.cuda.memory_summary())
         # 调用 train 函数进行图神经网络训练
-        train(g, env, args)
+        train(g, env, args, gpu_monitor)
 
-    
     # 每个 rank 打印自己的模型信息
     print(f"[RANK {env.rank}] Model: {args.model}, layers: {args.nlayers}, nprocs: {args.nprocs}", flush=True)
 
-    # 训练完成后，加入同步
-    if env.world_size > 1:
-        # 所有 rank 等待训练完成
-        torch.distributed.barrier()
+    # 所有rank同步GPU显存数据
+    # gpu_summary = gpu_monitor.sync_memory_stats()
 
-    # rank 0 输出同步后的计时器总时间
+    # 只有rank 0会打印显存汇总报告
+    # gpu_monitor.print_memory_summary(gpu_summary)
+
+    # summary = env.timer.summary_all()
+
+    save_dir = "./timers"
+    os.makedirs(save_dir, exist_ok=True)
+
+    # 保存本地 duration_dict，命名和原来格式一致
+    filename = os.path.join(save_dir, f"duration_dict_{env.rank}.pkl")
+    with open(filename, "wb") as f:
+        pickle.dump(env.timer.duration_dict, f)
+
+    print(f"[{env.rank}] Saved duration_dict locally as {filename}")
+
+    """# 只有 rank 0 打印统计结果
     if env.rank == 0:
         env.logger.log("===== Total Timing Summary =====", rank=0)
-        env.logger.log(env.timer.summary_all(), rank=0)
-    # env.logger.log(env.timer.detail_all(), rank=0)
+        env.logger.log(summary)
+        env.logger.log("================================", rank=0)
+    # env.logger.log(env.timer.detail_all(), rank=0)"""
+
+    # 保存本地 GPU 内存数据
+    gpu_monitor.save_memory_stats()
+    summary = gpu_monitor.compute_summary()
+    gpu_monitor.print_summary(summary)

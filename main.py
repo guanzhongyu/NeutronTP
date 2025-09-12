@@ -21,23 +21,27 @@ def process_wrapper(rank, args, func):
 
     if args.nnodes == 1:  
         # 单机模式
-        os.environ['MASTER_ADDR'] = "127.0.0.1"    #设置分布式训练的主节点，127.0.0.1默认是本地节点
-        os.environ['MASTER_PORT'] = "29500"    #端口号
+        master_addr = "127.0.0.1"
+        master_port = 29500
+        os.environ['MASTER_ADDR'] = master_addr
+        os.environ['MASTER_PORT'] = str(master_port)
         if args.backend == 'nccl':
-            # NCCL 专门用于 GPU 通信
-            os.environ['NCCL_SOCKET_IFNAME'] = 'lo' #NCCL网络接口名称，'lo'通常表示本地回环接口，GPU通信将通过本地主机进行
+            os.environ['NCCL_SOCKET_IFNAME'] = 'lo'
     else:
         # 多机模式
         # 这里要确保所有节点的 MASTER_ADDR/MASTER_PORT 一致
-        os.environ['MASTER_ADDR'] = args.master_addr
-        os.environ['MASTER_PORT'] = args.master_port
-        os.environ['NCCL_SOCKET_IFNAME'] = args.ifname     # 网卡名
-        # rank 需要考虑 node_rank
+        master_addr = args.master_addr
+        master_port = int(args.master_port)
+        os.environ['MASTER_ADDR'] = master_addr
+        os.environ['MASTER_PORT'] = str(master_port)
+        os.environ['NCCL_SOCKET_IFNAME'] = args.ifname
         rank = args.node_rank * args.nprocs + rank
         
     # 创建分布式环境
     world_size = args.nnodes * args.nprocs
-    env = dist_utils.DistEnv(rank, world_size, args.backend)
+    env = dist_utils.DistEnv(rank, world_size, args.backend,
+                             master_addr=master_addr,
+                             master_port=master_port)
 
     if args.backend == 'nccl':
         # GPU 模式
@@ -120,4 +124,13 @@ if __name__ == "__main__":
         每次运行前首先保证nccl通信一致，然后设置网卡名
         export NCCL_IB_DISABLE=1
         export NCCL_SOCKET_IFNAME=ens17f0
+        
+        启动nccl调试模式
+        export NCCL_DEBUG=INFO
     """
+
+"""
+    运行后查看端口占用
+    lsof -i :29500
+    kill -9 <pid>
+"""
